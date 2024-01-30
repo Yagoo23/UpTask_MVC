@@ -1,9 +1,11 @@
 <?php
 
+
 namespace Controllers;
 
 use Model\Usuario;
 use MVC\Router;
+use Classes\Email;
 
 class LoginController
 {
@@ -40,8 +42,27 @@ class LoginController
                     Usuario::setAlerta('error', 'El usuario ya está registrado');
                     $alertas = Usuario::getAlertas();
                 } else {
+                    //Hashear la contraseña
+                    $usuario->hashPassword();
+
+                    //Eliminar password2
+                    unset($usuario->password2);
+
+                    //Generar el token
+                    $usuario->crearToken();
+
                     //Crear nuevo usuario
+                    $resultado = $usuario->guardar();
+
+                    //Enviar email
+                    $email = new Email($usuario->email, $usuario->nombre, $usuario->token);
+                    $email->enviarConfirmacion();
                     
+
+                    if ($resultado) {
+                        header('Location: /mensaje');
+                    }
+
                 }
             }
         }
@@ -86,8 +107,34 @@ class LoginController
 
     public static function confirmar(Router $router)
     {
+        $token = s($_GET['token']);
+
+        if (!$token) {
+            header('Location: /');
+        }
+
+        //Encontrar al usuario con ese token
+        $usuario = Usuario::where('token', $token);
+
+        if (empty($usuario)) {
+            //No se encontró usuario con ese token
+            Usuario::setAlerta('error', 'Token No Válido');
+        } else {
+            //Confirmar cuenta
+            $usuario->confirmado = 1;
+            $usuario->token = null;
+            unset($usuario->password2);
+
+            //Guardar en la Base de Datos
+            $usuario->guardar();
+            Usuario::setAlerta('exito', 'Cuenta Comprobada Correctamente');
+        }
+
+        $alertas = Usuario::getAlertas();
+
         $router->render('auth/confirmar', [
-            'titulo' => 'Cuenta Confirmada Correctamente'
+            'titulo' => 'Cuenta Confirmada Correctamente',
+            'alertas' =>$alertas
         ]);
     }
 }

@@ -16,7 +16,7 @@ class Usuario extends ActiveRecord
         $this->password = $args['password'] ?? '';
         $this->password2 = $args['password2'] ?? '';
         $this->token = $args['token'] ?? '';
-        $this->confirmado = $args['confirmado'] ?? '';
+        $this->confirmado = $args['confirmado'] ?? 0;
     }
 
     //Validación para nueva cuenta
@@ -39,5 +39,17 @@ class Usuario extends ActiveRecord
         }
 
         return self::$alertas;
+    }
+
+    //Hashea la contraseña
+    public function hashPassword()
+    {
+        $this->password = password_hash($this->password, PASSWORD_BCRYPT);
+    }
+
+    //Generar el token
+    public function crearToken()
+    {
+        $this->token = uniqid();
     }
 }
